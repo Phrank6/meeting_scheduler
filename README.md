@@ -3,9 +3,10 @@
 A scheduling page where people publish weekly open hours and others book one-on-one time. The page is static (GitHub Pages); sign-in, data and email run on Supabase's free tier.
 
 - Sign in with an email link, no passwords.
-- Each person sets weekly windows, meeting length (30/45/60 min), a cap on bookings per week and a cap on hours per week.
+- Each person paints their free time on a 15-minute grid (drag, like When2meet), sets shortest/longest meeting length, a cap on bookings per week and a cap on hours per week.
+- Bookers drag across the open 15-minute blocks to choose their own start and end.
 - Everyone sees open times in their own time zone. The database enforces the limits and prevents double booking.
-- Booking and cancellation emails go to the host and the guest through your Gmail account.
+- Booking and cancellation emails (styled invitation plus a calendar file with a 15-minute reminder) go to the host and the guest through your Gmail account.
 
 ## Setup (about 20 minutes)
 
@@ -34,6 +35,9 @@ Gmail allows roughly 500 outgoing emails a day, which is plenty for a club or te
 
 ### 5. Publish
 In the GitHub repo, go to **Settings > Pages**, choose **Deploy from a branch**, branch `main`, folder `/ (root)`. The site appears at the address from step 3 after a minute or two.
+
+## Upgrading from the first version
+Run `supabase/migration.sql` once in the SQL Editor, replace `index.html` in the repo (leave your own `config.js` alone), and paste the new `supabase/functions/notify/index.ts` into the `notify` function and redeploy it.
 
 ## Good to know
 - Emails are sent by the page right after a booking. If someone closes the tab in that second, that one email is skipped (the booking still stands and shows in My schedule).

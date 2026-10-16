@@ -10,12 +10,15 @@ create table public.hosts (
   user_id uuid primary key references auth.users(id) on delete cascade,
   active boolean not null default true,
   tz text not null default 'UTC',
-  duration_min int not null default 60 check (duration_min in (30, 45, 60)),
+  duration_min int not null default 60 check (duration_min between 15 and 240),
+  min_meeting_min int not null default 15 check (min_meeting_min in (15, 30, 45, 60)),
+  max_meeting_min int not null default 60 check (max_meeting_min in (15, 30, 45, 60, 90, 120)),
   max_per_week int not null default 4 check (max_per_week between 1 and 40),
   max_hours_per_week numeric not null default 4 check (max_hours_per_week between 0.5 and 40),
   link text not null default '' check (char_length(link) <= 200),
   avail jsonb not null default '{}'::jsonb,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint hosts_meeting_range check (min_meeting_min <= max_meeting_min)
 );
 
 -- Private to the host: the address booking emails go to.
@@ -76,7 +79,7 @@ begin
       and b.start_at < now() + interval '45 days';
 end $$;
 
-create or replace function public.book_slot(p_host uuid, p_start timestamptz, p_topic text)
+create or replace function public.book_slot(p_host uuid, p_start timestamptz, p_duration int, p_topic text)
 returns uuid
 language plpgsql security definer set search_path = public as $$
 declare
@@ -99,41 +102,48 @@ begin
 
   select * into hrow from public.hosts where user_id = p_host and active;
   if not found then raise exception 'This person is not taking bookings right now.'; end if;
+  if p_duration is null or p_duration % 15 <> 0 then raise exception 'Meetings run in 15-minute steps.'; end if;
+  if p_duration < hrow.min_meeting_min or p_duration > hrow.max_meeting_min then
+    raise exception 'This person takes meetings of % to % minutes.', hrow.min_meeting_min, hrow.max_meeting_min;
+  end if;
   if p_start < now() + interval '2 hours' then raise exception 'That time is too soon. Pick one at least 2 hours ahead.'; end if;
   if p_start > now() + interval '30 days' then raise exception 'That time is too far ahead.'; end if;
 
   perform pg_advisory_xact_lock(hashtext(p_host::text));
 
   local_ts := p_start at time zone hrow.tz;
+  if extract(second from local_ts) <> 0 or (extract(minute from local_ts)::int % 15) <> 0 then
+    raise exception 'Start times must fall on a quarter hour.';
+  end if;
   dow := extract(dow from local_ts)::int;
   tmin := extract(hour from local_ts)::int * 60 + extract(minute from local_ts)::int;
 
   for w in select e.v from jsonb_array_elements(coalesce(hrow.avail -> (dow::text), '[]'::jsonb)) as e(v) loop
     s_min := split_part(w ->> 's', ':', 1)::int * 60 + split_part(w ->> 's', ':', 2)::int;
     e_min := split_part(w ->> 'e', ':', 1)::int * 60 + split_part(w ->> 'e', ':', 2)::int;
-    if tmin >= s_min and tmin + hrow.duration_min <= e_min and ((tmin - s_min) % hrow.duration_min) = 0 then
+    if tmin >= s_min and tmin + p_duration <= e_min then
       ok := true;
     end if;
   end loop;
-  if not ok then raise exception 'That is not one of this person''s open times.'; end if;
+  if not ok then raise exception 'That is not within this person''s open hours.'; end if;
 
   if exists (
     select 1 from public.bookings b
     where b.host_id = p_host and b.status = 'confirmed'
       and p_start < b.start_at + make_interval(mins => b.duration_min)
-      and p_start + make_interval(mins => hrow.duration_min) > b.start_at
+      and p_start + make_interval(mins => p_duration) > b.start_at
   ) then raise exception 'That time was just taken. Pick another one.'; end if;
 
   select count(*), coalesce(sum(b.duration_min), 0) into n, mins
   from public.bookings b
   where b.host_id = p_host and b.status = 'confirmed'
     and date_trunc('week', b.start_at at time zone hrow.tz) = date_trunc('week', local_ts);
-  if n >= hrow.max_per_week or mins + hrow.duration_min > hrow.max_hours_per_week * 60 then
+  if n >= hrow.max_per_week or mins + p_duration > hrow.max_hours_per_week * 60 then
     raise exception 'This person has reached their limit for that week.';
   end if;
 
   insert into public.bookings (host_id, guest_id, start_at, duration_min, topic)
-  values (p_host, me, p_start, hrow.duration_min, left(coalesce(btrim(p_topic), ''), 140))
+  values (p_host, me, p_start, p_duration, left(coalesce(btrim(p_topic), ''), 140))
   returning id into new_id;
   return new_id;
 end $$;
@@ -158,11 +168,11 @@ language sql security definer set search_path = public as $$
 $$;
 
 revoke all on function public.busy_slots_all() from public, anon;
-revoke all on function public.book_slot(uuid, timestamptz, text) from public, anon;
+revoke all on function public.book_slot(uuid, timestamptz, int, text) from public, anon;
 revoke all on function public.cancel_booking(uuid) from public, anon;
 revoke all on function public.mark_seen() from public, anon;
 grant execute on function public.busy_slots_all() to authenticated;
-grant execute on function public.book_slot(uuid, timestamptz, text) to authenticated;
+grant execute on function public.book_slot(uuid, timestamptz, int, text) to authenticated;
 grant execute on function public.cancel_booking(uuid) to authenticated;
 grant execute on function public.mark_seen() to authenticated;
 
