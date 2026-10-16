@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Open Hours</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one calm column system. Directory of people on the left, their open times on the right; stacks on phones. */
+:root{
+  --bg:#EEF2F5; --surface:#FFFFFF; --surface-2:#F5F7F9; --ink:#13202B; --muted:#586979; --line:#D6DEE5;
+  --accent:#2448C9; --accent-ink:#FFFFFF; --accent-soft:#E3EAFB;
+  --free:#0F7A5F; --free-soft:#DDF3EB; --warn:#8F5600; --warn-soft:#FBEBCB; --danger:#B3261E; --danger-soft:#FBE3E1;
+  --font-display:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0E141A; --surface:#161F27; --surface-2:#1B2630; --ink:#E8EEF3; --muted:#9AAAB8; --line:#2A3743;
+    --accent:#8CA6FF; --accent-ink:#0B1220; --accent-soft:#1F2C52;
+    --free:#4FD1A5; --free-soft:#12362C; --warn:#F0B35A; --warn-soft:#3A2A0F; --danger:#FF8A80; --danger-soft:#3B1B19;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;
+  padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.narrow{max-width:460px;margin:8vh auto 0;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:30px;line-height:1.1}
+h2{font-size:21px;line-height:1.2}
+h3{font-size:16px}
+p{margin:0}
+.muted{color:var(--muted)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.top p{max-width:52ch;margin-top:6px}
+.who{font-size:13px;color:var(--muted);text-align:right;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;font-weight:600;color:var(--muted);white-space:nowrap;display:flex;gap:8px;align-items:center}
+.tab[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.badge{background:var(--accent);color:var(--accent-ink);border-radius:99px;font-size:12px;padding:0 7px;min-width:20px;text-align:center;font-family:var(--font-mono)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:600}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:4px 10px;font-size:13px}
+.link{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font-size:13px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.book{display:grid;grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:24px;align-items:start}
+.people{display:flex;flex-direction:column;gap:8px;min-width:0}
+.field{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 12px}
+.person{display:flex;gap:12px;align-items:center;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.person.on{border-color:var(--accent);background:var(--accent-soft)}
+.person .pmeta{display:flex;flex-direction:column;min-width:0}
+.sub{font-size:13px;color:var(--muted)}
+.av{width:36px;height:36px;border-radius:50%;flex:none;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:14px}
+.av.lg{width:48px;height:48px;font-size:18px}
+.dayhead{font-family:var(--font-display);font-weight:600;font-size:15px;margin-bottom:8px}
+.day{padding:14px 0;border-top:1px solid var(--line)}
+.slots{display:flex;flex-wrap:wrap;gap:8px}
+.slot{font-family:var(--font-mono);font-size:14px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;color:var(--free);font-weight:500}
+.slot:hover:not(:disabled),.slot.on{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+.slot:disabled{cursor:default}
+.chip{display:inline-block;font-size:12px;font-weight:600;border-radius:6px;padding:1px 8px;background:var(--surface-2);color:var(--muted)}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.chip.bad{background:var(--danger-soft);color:var(--danger)}
+.confirm{background:var(--accent-soft);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;margin:16px 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.note{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:14px}
+.err{background:var(--danger-soft);color:var(--danger);border-radius:8px;padding:10px 12px;font-size:14px}
+.ok{background:var(--free-soft);color:var(--free);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;margin:16px 0}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:28px 20px;color:var(--muted);text-align:center}
+.list{display:flex;flex-direction:column}
+.meet{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) auto;gap:8px 16px;padding:14px 0;border-top:1px solid var(--line);align-items:start}
+.meet:first-child{border-top:0}
+.meet .when{font-family:var(--font-mono);font-size:14px;font-variant-numeric:tabular-nums;white-space:pre-line}
+.meet .what{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.meet.gone .what,.meet.gone .when{text-decoration:line-through;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld label,.lbl{font-size:13px;font-weight:600}
+.dayrow{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:start}
+.wins{display:flex;flex-direction:column;gap:8px}
+.win{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.win input{width:auto;font-family:var(--font-mono)}
+.meter{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;border:1px solid var(--line)}
+.meter i{display:block;height:100%;background:var(--accent)}
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.meters div{display:flex;flex-direction:column;gap:6px}
+.toast{position:fixed;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));max-width:420px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:10px;padding:12px 16px;font-weight:500;z-index:20}
+.notif{background:var(--accent-soft);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+a{color:var(--accent)}
+@media (max-width:760px){
+  .book{grid-template-columns:minmax(0,1fr)}
+  .meet{grid-template-columns:minmax(0,1fr)}
+  .dayrow{grid-template-columns:minmax(0,1fr)}
+  .who{text-align:left;justify-content:flex-start}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<div class="narrow" id="setup" hidden>
+  <h1>Open Hours</h1>
+  <div class="note">This site is not connected to its database yet. Open <strong>config.js</strong> and paste in your Supabase project URL and anon key. The README has the steps.</div>
+</div>
+
+<div class="narrow" id="auth" hidden>
+  <div><h1>Open Hours</h1><p class="muted" style="margin-top:6px">Offer a few hours a week, or book one-on-one time with other people here.</p></div>
+  <form class="panel stack" id="loginForm">
+    <div class="fld"><label for="email">Your email</label>
+      <input class="field" id="email" type="email" required autocomplete="email" placeholder="you@example.com"></div>
+    <button class="btn primary" type="submit" id="loginBtn">Email me a sign-in link</button>
+    <p class="sub" id="loginMsg" role="status">No password needed. We email you a link that signs you in.</p>
+  </form>
+</div>
+
+<div class="narrow" id="nameScreen" hidden>
+  <div><h1>What should people call you?</h1><p class="muted" style="margin-top:6px">This name appears in the list of people and on bookings. You can change it later under My hours.</p></div>
+  <form class="panel stack" id="nameForm">
+    <div class="fld"><label for="firstName">Your name</label>
+      <input class="field" id="firstName" type="text" required maxlength="80" autocomplete="name"></div>
+    <button class="btn primary" type="submit">Continue</button>
+    <p class="err" id="nameErr" hidden></p>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div>
+      <h1>Open Hours</h1>
+      <p class="muted">Offer a few hours a week, or book one-on-one time with other people here.</p>
+    </div>
+    <div class="who"><span id="who"></span><button class="link" type="button" id="signOut">Sign out</button></div>
+  </header>
+  <nav class="tabs" aria-label="Sections">
+    <button class="tab" type="button" data-view="book">Book time</button>
+    <button class="tab" type="button" data-view="mine">My schedule <span class="badge" id="badge" hidden>0</span></button>
+    <button class="tab" type="button" data-view="hours">My hours</button>
+  </nav>
+
+  <section id="view-book" class="book">
+    <div class="people">
+      <label class="lbl" for="q">Find a person</label>
+      <input class="field" id="q" type="search" placeholder="Search by name" autocomplete="off">
+      <div id="people" class="people"></div>
+    </div>
+    <div class="panel" id="detail"></div>
+  </section>
+
+  <section id="view-mine" class="stack" hidden>
+    <div id="notif"></div>
+    <div class="panel"><h2>Upcoming meetings</h2><div id="upcoming" class="list" style="margin-top:12px"></div></div>
+    <div class="panel" id="cancelledBox" hidden><h3>Cancelled</h3><div id="cancelled" class="list" style="margin-top:8px"></div></div>
+  </section>
+
+  <section id="view-hours" class="stack" hidden></section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)};
+function h(tag,attrs){
+  var e=document.createElement(tag);attrs=attrs||{};
+  for(var k in attrs){var v=attrs[k];
+    if(k==='class')e.className=v;
+    else if(k.indexOf('on')===0)e.addEventListener(k.slice(2),v);
+    else if(v===true)e.setAttribute(k,'');
+    else if(v!==false&&v!=null)e.setAttribute(k,v);}
+  for(var i=2;i<arguments.length;i++){[].concat(arguments[i]).forEach(function(c){
+    if(c==null||c===false)return;e.append(c.nodeType?c:document.createTextNode(String(c)));});}
+  return e;
+}
+var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var ABBR=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var ORDER=[1,2,3,4,5,6,0];
+var MYTZ=(Intl.DateTimeFormat().resolvedOptions().timeZone)||'UTC';
+var sb=null;
+
+var S={uid:null,email:'',hosts:{},profiles:{},bookings:{},busy:{},notifyEmail:'',
+  hostsReady:false,view:'book',selHost:null,selSlot:null,result:null,q:'',topic:'',busy_:false,
+  draft:null,dirty:false,starter:false,cancelling:null,seenIds:null,saveMsg:'',booted:false,started:false};
+
+/* ---------- time helpers (no library) ---------- */
+function tzParts(ms,tz){
+  var f=new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  var o={};f.formatToParts(new Date(ms)).forEach(function(p){o[p.type]=p.value});return o;
+}
+function offsetMs(ms,tz){var p=tzParts(ms,tz);return Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute)-Math.floor(ms/60000)*60000;}
+function zonedToUtc(y,m,d,hh,mm,tz){var g=Date.UTC(y,m-1,d,hh,mm);var t=g-offsetMs(g,tz);return g-offsetMs(t,tz);}
+function weekKey(ms,tz){
+  var p=tzParts(ms,tz),d=new Date(Date.UTC(+p.year,+p.month-1,+p.day));
+  d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));return d.toISOString().slice(0,10);
+}
+function fmtDay(ms){return new Date(ms).toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});}
+function fmtShort(ms){return new Date(ms).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});}
+function fmtTime(ms){return new Date(ms).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});}
+function fmtRange(ms,dur){return fmtTime(ms)+' – '+fmtTime(ms+dur*60000);}
+function dayKey(ms){return new Date(ms).toLocaleDateString('en-CA');}
+
+/* ---------- data helpers ---------- */
+function nm(id){var p=S.profiles[id];return (p&&p.name)||(id===S.uid?'You':'Someone');}
+function avatar(id,lg){var n=(S.profiles[id]&&S.profiles[id].name)||'?';return h('span',{class:'av'+(lg?' lg':''),'aria-hidden':'true'},n.trim().charAt(0).toUpperCase());}
+function hasAvail(x){var a=x&&x.avail;if(!a)return false;return Object.keys(a).some(function(k){return a[k]&&a[k].length});}
+function hostBookings(hid){return S.busy[hid]||[];}
+function weekLoad(ms,tz,bks){var k=weekKey(ms,tz),n=0,min=0;bks.forEach(function(b){if(weekKey(b.startMs,tz)===k){n++;min+=b.durationMin;}});return{n:n,min:min};}
+function limitsHit(host,load,dur){return load.n>=(host.maxPerWeek||99)||load.min+dur>(host.maxHoursPerWeek||99)*60;}
+function slotsFor(hid,host){
+  var tz=host.tz||'UTC',dur=host.durationMin||60,now=Date.now(),earliest=now+2*3600000,bks=hostBookings(hid),seen={},out=[];
+  var t0=tzParts(now,tz);
+  for(var i=0;i<14;i++){
+    var d=new Date(Date.UTC(+t0.year,+t0.month-1,+t0.day+i));
+    var wins=(host.avail||{})[d.getUTCDay()]||[];
+    wins.forEach(function(w){
+      var s=w.s.split(':').map(Number),e=w.e.split(':').map(Number),a=s[0]*60+s[1],end=e[0]*60+e[1];
+      for(;a+dur<=end;a+=dur){
+        var ms=zonedToUtc(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate(),Math.floor(a/60),a%60,tz);
+        if(ms<earliest||seen[ms])continue;seen[ms]=1;
+        var taken=bks.some(function(b){return ms<b.startMs+b.durationMin*60000&&ms+dur*60000>b.startMs;});
+        out.push({ms:ms,dur:dur,taken:taken,full:!taken&&limitsHit(host,weekLoad(ms,tz,bks),dur),wk:weekKey(ms,tz)});
+      }
+    });
+  }
+  return out.sort(function(a,b){return a.ms-b.ms;});
+}
+function leftThisWeek(hid,host){
+  var l=weekLoad(Date.now(),host.tz||'UTC',hostBookings(hid)),dur=host.durationMin||60;
+  return Math.max(0,Math.min((host.maxPerWeek||99)-l.n,Math.floor(((host.maxHoursPerWeek||99)*60-l.min)/dur)));
+}
+function daysLabel(host){return ORDER.filter(function(d){var w=(host.avail||{})[d];return w&&w.length}).map(function(d){return ABBR[d]}).join(', ');}
+function unseenForHost(){
+  return Object.keys(S.bookings).map(function(id){return Object.assign({id:id},S.bookings[id])})
+    .filter(function(b){return b.hostId===S.uid&&b.guestId!==S.uid&&b.seenByHost===false;}).sort(function(a,b){return a.startMs-b.startMs});
+}
+function toast(msg){var t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},6000);}
+function linkOrText(v){
+  if(!v)return null;
+  if(/^https?:\/\//i.test(v))return h('a',{href:v,target:'_blank',rel:'noopener noreferrer'},v);
+  return h('span',{},v);
+}
+function showScreen(name){
+  ['setup','auth','nameScreen','app'].forEach(function(k){$('#'+(k==='setup'?'setup':k)).hidden=k!==name;});
+}
+
+/* ---------- loading data ---------- */
+async function loadAll(){
+  var since=new Date(Date.now()-7*86400000).toISOString();
+  var r=await Promise.all([
+    sb.from('hosts').select('*'),
+    sb.from('profiles').select('id,name'),
+    sb.from('host_private').select('notify_email').eq('user_id',S.uid).maybeSingle(),
+    sb.from('bookings').select('*').or('host_id.eq.'+S.uid+',guest_id.eq.'+S.uid).gte('start_at',since),
+    sb.rpc('busy_slots_all')
+  ]);
+  var bad=r.filter(function(x){return x.error})[0];
+  if(bad){toast('Could not load data: '+bad.error.message);if(!S.hostsReady)return false;}
+  if(r[0].data){S.hosts={};r[0].data.forEach(function(x){S.hosts[x.user_id]={active:x.active,tz:x.tz,durationMin:x.duration_min,maxPerWeek:x.max_per_week,
+    maxHoursPerWeek:Number(x.max_hours_per_week),link:x.link,avail:x.avail||{}};});}
+  if(r[1].data){S.profiles={};r[1].data.forEach(function(x){S.profiles[x.id]={name:x.name}});}
+  if(r[2].data)S.notifyEmail=r[2].data.notify_email||'';
+  if(r[3].data){S.bookings={};r[3].data.forEach(function(x){S.bookings[x.id]={hostId:x.host_id,guestId:x.guest_id,startMs:Date.parse(x.start_at),
+    durationMin:x.duration_min,topic:x.topic,status:x.status,seenByHost:x.seen_by_host};});}
+  if(r[4].data){S.busy={};r[4].data.forEach(function(x){(S.busy[x.host_id]=S.busy[x.host_id]||[]).push({startMs:Date.parse(x.start_at),durationMin:x.duration_min});});}
+  S.hostsReady=true;
+  return true;
+}
+async function refreshData(){
+  if(!S.started)return;
+  await loadAll();
+  var un=unseenForHost().map(function(b){return b.id});
+  if(S.seenIds){
+    var fresh=unseenForHost().filter(function(b){return S.seenIds.indexOf(b.id)<0});
+    if(fresh.length){var b=fresh[0];toast((b.status==='confirmed'?'New booking: ':'Cancelled: ')+nm(b.guestId)+' · '+fmtShort(b.startMs)+', '+fmtTime(b.startMs));}
+  }
+  S.seenIds=un;
+  renderAll();
+}
+
+/* ---------- Book view ---------- */
+var lastPeopleSig='',lastDetailSig='';
+function visibleHosts(){
+  var q=S.q.trim().toLowerCase();
+  return Object.keys(S.hosts).filter(function(id){var x=S.hosts[id];return x.active!==false&&hasAvail(x);})
+    .map(function(id){return{id:id,h:S.hosts[id],name:nm(id)}})
+    .filter(function(x){return !q||x.name.toLowerCase().indexOf(q)>-1;})
+    .sort(function(a,b){if(a.id===S.uid)return -1;if(b.id===S.uid)return 1;return a.name.localeCompare(b.name)});
+}
+function renderPeople(){
+  var list=visibleHosts();
+  var sig=JSON.stringify([S.hostsReady,S.selHost,list.map(function(x){return[x.id,x.name,leftThisWeek(x.id,x.h),daysLabel(x.h),x.h.durationMin]})]);
+  if(sig===lastPeopleSig)return;lastPeopleSig=sig;
+  var box=$('#people');box.replaceChildren();
+  if(!S.hostsReady){box.append(h('div',{class:'empty'},'Loading people…'));return;}
+  if(!list.length){
+    box.append(h('div',{class:'empty'},S.q?'No one matches that name.':'No one has published open hours yet. Set yours under My hours and you will be the first listed.'));return;
+  }
+  list.forEach(function(x){
+    var on=S.selHost===x.id,left=leftThisWeek(x.id,x.h);
+    box.append(h('button',{class:'person'+(on?' on':''),type:'button','aria-pressed':on?'true':'false',onclick:function(){
+        S.selHost=x.id;S.selSlot=null;S.result=null;S.topic='';renderPeople();renderDetail();
+        if(window.innerWidth<=760)$('#detail').scrollIntoView({behavior:'smooth',block:'start'});
+      }},
+      avatar(x.id),
+      h('span',{class:'pmeta'},h('strong',{},x.name,x.id===S.uid?h('span',{class:'chip acc',style:'margin-left:8px'},'You'):null),
+        h('span',{class:'sub'},daysLabel(x.h)+' · '+(x.h.durationMin||60)+' min · '+left+' left this week'))));
+  });
+}
+function renderDetail(){
+  var d=$('#detail'),hid=S.selHost,host=hid&&S.hosts[hid];
+  if(!host||host.active===false||!hasAvail(host)){
+    var sigE='empty'+S.hostsReady;if(sigE===lastDetailSig)return;lastDetailSig=sigE;
+    d.replaceChildren(h('div',{class:'empty'},'Pick a person to see their open times.'));return;
+  }
+  var slots=slotsFor(hid,host),free=slots.filter(function(s){return !s.taken&&!s.full});
+  var sig=JSON.stringify([hid,S.selSlot,S.result,S.busy_,free.map(function(s){return s.ms}),slots.filter(function(s){return s.full}).map(function(s){return s.wk}),host.link,nm(hid)]);
+  if(sig===lastDetailSig)return;lastDetailSig=sig;
+  var dur=host.durationMin||60,out=[],canBook=hid!==S.uid;
+  out.push(h('div',{class:'row',style:'gap:14px'},avatar(hid,true),h('div',{},h('h2',{},nm(hid)),
+    h('p',{class:'sub'},dur+'-minute meetings · up to '+(host.maxPerWeek||'—')+' a week · their time zone is '+(host.tz||'UTC')))));
+  if(MYTZ!==host.tz)out.push(h('p',{class:'sub',style:'margin-top:8px'},'Times below are in your time zone ('+MYTZ+').'));
+  if(!canBook)out.push(h('div',{class:'note',style:'margin-top:12px'},'This is how others see your hours. You cannot book yourself, so the times are shown for preview only.'));
+  if(S.result&&S.result.hid===hid){
+    var r=S.result;
+    out.push(h('div',{class:'ok'},h('strong',{},'You are booked with '+nm(hid)+'.'),
+      h('span',{class:'mono'},fmtDay(r.ms)+' · '+fmtRange(r.ms,r.dur)),
+      host.link?h('span',{},'Where: ',linkOrText(host.link)):null,
+      h('span',{},'A confirmation email is on its way to you and '+nm(hid)+'.'),
+      h('div',{class:'row'},h('button',{class:'btn sm',type:'button',onclick:function(){S.result=null;setView('mine');}},'View my schedule'),
+        h('button',{class:'btn sm',type:'button',onclick:function(){S.result=null;lastDetailSig='';renderDetail();}},'Book another time'))));
+  }
+  if(S.selSlot){
+    var sl=slots.filter(function(s){return s.ms===S.selSlot})[0];
+    if(sl&&!sl.taken&&!sl.full){
+      var inp=h('input',{class:'field',id:'topic',maxlength:'140',placeholder:'Optional. Shared with '+nm(hid)+'.',value:S.topic,oninput:function(e){S.topic=e.target.value}});
+      out.push(h('div',{class:'confirm'},
+        h('div',{class:'mono'},fmtDay(sl.ms)+' · '+fmtRange(sl.ms,sl.dur)),
+        h('div',{class:'fld'},h('label',{for:'topic'},'What would you like to talk about?'),inp),
+        h('div',{class:'row'},
+          h('button',{class:'btn primary',type:'button',disabled:S.busy_,onclick:function(){book(hid,host,sl)}},S.busy_?'Booking…':'Confirm booking'),
+          h('button',{class:'btn',type:'button',disabled:S.busy_,onclick:function(){S.selSlot=null;lastDetailSig='';renderDetail();}},'Choose another time'))));
+    }else{S.selSlot=null;}
+  }
+  if(!free.length){
+    out.push(h('div',{class:'empty',style:'margin-top:16px'},'No open times in the next 14 days.'));
+  }else{
+    var groups=[],cur=null;
+    free.forEach(function(s){var k=dayKey(s.ms);if(!cur||cur.k!==k){cur={k:k,ms:s.ms,items:[]};groups.push(cur);}cur.items.push(s);});
+    groups.forEach(function(g){
+      out.push(h('div',{class:'day'},h('div',{class:'dayhead'},fmtDay(g.ms)),
+        h('div',{class:'slots'},g.items.map(function(s){
+          return h('button',{class:'slot'+(S.selSlot===s.ms?' on':''),type:'button',disabled:!canBook,onclick:function(){S.selSlot=s.ms;S.result=null;S.topic='';lastDetailSig='';renderDetail();var t=$('#topic');if(t)t.focus();}},fmtTime(s.ms));}))));
+    });
+  }
+  var fullWeeks={};slots.forEach(function(s){if(s.full)fullWeeks[s.wk]=1});
+  var fw=Object.keys(fullWeeks);
+  if(fw.length)out.push(h('div',{class:'note',style:'margin-top:8px'},nm(hid)+' has reached their weekly limit for the week of '+fw.map(function(k){return new Date(k+'T12:00:00Z').toLocaleDateString(undefined,{month:'short',day:'numeric',timeZone:'UTC'})}).join(', ')+'. Those times are hidden.'));
+  d.replaceChildren.apply(d,out);
+}
+async function book(hid,host,sl){
+  if(S.busy_)return;S.busy_=true;lastDetailSig='';renderDetail();
+  var res=await sb.rpc('book_slot',{p_host:hid,p_start:new Date(sl.ms).toISOString(),p_topic:S.topic||''});
+  S.busy_=false;
+  if(res.error){lastDetailSig='';await refreshData();toast(res.error.message);return;}
+  sb.functions.invoke('notify',{body:{booking_id:res.data,event:'booked',tz:MYTZ}}).catch(function(){});
+  S.selSlot=null;S.result={hid:hid,ms:sl.ms,dur:sl.dur};S.topic='';lastDetailSig='';lastPeopleSig='';
+  await refreshData();
+}
+
+/* ---------- My schedule ---------- */
+function renderSchedule(){
+  var now=Date.now(),mine=Object.keys(S.bookings).map(function(id){return Object.assign({id:id},S.bookings[id])});
+  var up=mine.filter(function(b){return b.status==='confirmed'&&b.startMs+b.durationMin*60000>now}).sort(function(a,b){return a.startMs-b.startMs});
+  var gone=mine.filter(function(b){return b.status==='cancelled'&&b.startMs>now}).sort(function(a,b){return a.startMs-b.startMs});
+  var un=unseenForHost(),nb=$('#notif');nb.replaceChildren();
+  if(un.length){
+    nb.append(h('div',{class:'notif'},h('h3',{},un.length===1?'1 update on your hours':un.length+' updates on your hours'),
+      h('div',{class:'list'},un.map(function(b){
+        return h('div',{class:'row',style:'padding:2px 0'},
+          h('span',{class:'chip '+(b.status==='confirmed'?'acc':'bad')},b.status==='confirmed'?'New booking':'Cancelled'),
+          h('span',{},nm(b.guestId)+' · '+fmtShort(b.startMs)+', '+fmtRange(b.startMs,b.durationMin)));})),
+      h('div',{},h('button',{class:'btn sm',type:'button',onclick:markSeen},'Mark as seen'))));
+  }
+  var ul=$('#upcoming');ul.replaceChildren();
+  if(!up.length)ul.append(h('div',{class:'empty'},'No upcoming meetings. Book time with someone under Book time, or publish your own hours.'));
+  up.forEach(function(b){ul.append(meetRow(b,false))});
+  $('#cancelledBox').hidden=!gone.length;
+  var cl=$('#cancelled');cl.replaceChildren();gone.forEach(function(b){cl.append(meetRow(b,true))});
+  var n=un.length,bd=$('#badge');bd.hidden=!n;bd.textContent=String(n);
+}
+function meetRow(b,gone){
+  var hosting=b.hostId===S.uid,other=hosting?b.guestId:b.hostId,host=S.hosts[b.hostId];
+  var what=[h('strong',{},(hosting?'You are hosting ':'You are meeting ')+nm(other)),
+    b.topic?h('span',{class:'sub'},b.topic):null];
+  if(!gone&&host&&host.link)what.push(h('span',{class:'sub'},'Where: ',linkOrText(host.link)));
+  var act=null;
+  if(!gone){
+    act=S.cancelling===b.id
+      ?h('div',{class:'row'},h('button',{class:'btn sm danger',type:'button',onclick:function(){cancelBooking(b)}},'Yes, cancel'),h('button',{class:'btn sm',type:'button',onclick:function(){S.cancelling=null;renderSchedule()}},'Keep'))
+      :h('button',{class:'btn sm',type:'button',onclick:function(){S.cancelling=b.id;renderSchedule()}},'Cancel');
+  }else{act=h('span',{class:'chip bad'},'Cancelled');}
+  return h('div',{class:'meet'+(gone?' gone':'')},
+    h('div',{class:'when'},fmtShort(b.startMs)+'\n'+fmtRange(b.startMs,b.durationMin)),h('div',{class:'what'},what),act);
+}
+async function cancelBooking(b){
+  var res=await sb.rpc('cancel_booking',{p_id:b.id});
+  if(res.error){toast(res.error.message);return;}
+  sb.functions.invoke('notify',{body:{booking_id:b.id,event:'cancelled',tz:MYTZ}}).catch(function(){});
+  S.cancelling=null;toast('Meeting cancelled.');lastDetailSig='';lastPeopleSig='';
+  await refreshData();
+}
+async function markSeen(){
+  var res=await sb.rpc('mark_seen');
+  if(res.error){toast(res.error.message);return;}
+  await refreshData();
+}
+
+/* ---------- My hours ---------- */
+function defaultDraft(){
+  return{active:true,tz:MYTZ,durationMin:60,maxPerWeek:4,maxHoursPerWeek:4,link:'',notifyEmail:S.email||'',
+    avail:{'2':[{s:'14:00',e:'16:00'}],'4':[{s:'14:00',e:'16:00'}]}};
+}
+function loadDraft(){
+  var mineDoc=S.hosts[S.uid];
+  if(mineDoc){S.draft=JSON.parse(JSON.stringify(mineDoc));S.draft.notifyEmail=S.notifyEmail||S.email||'';S.starter=false;}
+  else{S.draft=defaultDraft();S.starter=true;}
+  S.dirty=false;
+}
+function tzList(){
+  var l=[];try{l=Intl.supportedValuesOf('timeZone').slice();}catch(e){}
+  if(l.indexOf(MYTZ)<0)l.unshift(MYTZ);
+  if(S.draft&&S.draft.tz&&l.indexOf(S.draft.tz)<0)l.unshift(S.draft.tz);
+  return l;
+}
+function renderHours(){
+  var v=$('#view-hours'),D=S.draft;if(!D)return;
+  var mark=function(){S.dirty=true;S.saveMsg='';var b=$('#saveMsg');if(b)b.textContent='Unpublished changes';};
+  var l=weekLoad(Date.now(),D.tz||MYTZ,hostBookings(S.uid));
+  var maxN=D.maxPerWeek||1,maxM=(D.maxHoursPerWeek||1)*60;
+  var meters=h('div',{class:'meters'},
+    h('div',{},h('span',{class:'lbl'},'Bookings this week'),h('span',{class:'mono'},l.n+' of '+maxN),h('div',{class:'meter'},h('i',{style:'width:'+Math.min(100,l.n/maxN*100)+'%'}))),
+    h('div',{},h('span',{class:'lbl'},'Time booked this week'),h('span',{class:'mono'},(l.min/60).toFixed(l.min%60?1:0)+' of '+(D.maxHoursPerWeek||1)+' h'),h('div',{class:'meter'},h('i',{style:'width:'+Math.min(100,l.min/maxM*100)+'%'}))));
+  var tzSel=h('select',{class:'field',id:'tz',onchange:function(e){D.tz=e.target.value;mark();}},tzList().map(function(z){return h('option',{value:z,selected:z===D.tz},z)}));
+  var durSel=h('select',{class:'field',id:'dur',onchange:function(e){D.durationMin=+e.target.value;mark();}},[30,45,60].map(function(n){return h('option',{value:n,selected:n===D.durationMin},n+' minutes')}));
+  var maxPer=h('input',{class:'field mono',id:'maxn',type:'number',min:'1',max:'40',step:'1',value:D.maxPerWeek,oninput:function(e){D.maxPerWeek=Math.max(1,Math.floor(+e.target.value||1));mark();}});
+  var maxHr=h('input',{class:'field mono',id:'maxh',type:'number',min:'0.5',max:'40',step:'0.5',value:D.maxHoursPerWeek,oninput:function(e){D.maxHoursPerWeek=Math.max(.5,+e.target.value||.5);mark();}});
+  var link=h('input',{class:'field',id:'link',maxlength:'200',placeholder:'Meeting link or room, shown after someone books',value:D.link||'',oninput:function(e){D.link=e.target.value;mark();}});
+  var active=h('input',{id:'active',type:'checkbox',checked:D.active!==false,onchange:function(e){D.active=e.target.checked;mark();}});
+  var rows=ORDER.map(function(d){
+    var wins=(D.avail[d]=D.avail[d]||[]);
+    return h('div',{class:'dayrow'},h('strong',{},DAYS[d]),
+      h('div',{class:'wins'},
+        wins.length?wins.map(function(w,i){
+          return h('div',{class:'win'},
+            h('input',{class:'field',type:'time',step:'900','aria-label':DAYS[d]+' start',value:w.s,oninput:function(e){w.s=e.target.value;mark();}}),
+            h('span',{class:'muted'},'to'),
+            h('input',{class:'field',type:'time',step:'900','aria-label':DAYS[d]+' end',value:w.e,oninput:function(e){w.e=e.target.value;mark();}}),
+            h('button',{class:'btn sm',type:'button','aria-label':'Remove window',onclick:function(){wins.splice(i,1);mark();renderHours();}},'Remove'));
+        }):h('span',{class:'sub'},'Not available'),
+        h('div',{},h('button',{class:'btn sm',type:'button',onclick:function(){wins.push({s:'13:00',e:'15:00'});mark();renderHours();}},'Add hours'))));
+  });
+  var nameIn=h('input',{class:'field',id:'myname',maxlength:'80',value:(S.profiles[S.uid]&&S.profiles[S.uid].name)||''});
+  v.replaceChildren(
+    h('div',{class:'panel stack'},
+      h('div',{},h('h2',{},'Your open hours'),h('p',{class:'muted'},'People see these times in their own time zone and can book without asking you first.')),
+      S.starter?h('div',{class:'note'},'These are starter hours and nobody can see them yet. Adjust them, then press Publish.'):null,
+      meters),
+    h('div',{class:'panel stack'},
+      h('div',{class:'fld'},h('label',{for:'myname'},'Your name'),
+        h('div',{class:'row'},h('div',{style:'flex:1;min-width:200px'},nameIn),h('button',{class:'btn',type:'button',onclick:function(){saveName(nameIn.value)}},'Save name'))),
+      h('div',{class:'row'},active,h('label',{for:'active',class:'lbl'},'Accepting bookings')),
+      h('div',{class:'grid2'},
+        h('div',{class:'fld'},h('label',{for:'dur'},'Meeting length'),durSel),
+        h('div',{class:'fld'},h('label',{for:'maxn'},'Most bookings per week'),maxPer),
+        h('div',{class:'fld'},h('label',{for:'maxh'},'Most hours per week'),maxHr),
+        h('div',{class:'fld'},h('label',{for:'tz'},'Your time zone'),tzSel)),
+      h('div',{class:'fld'},h('label',{for:'link'},'Meeting link or room'),link),
+      h('div',{class:'fld'},h('label',{for:'nemail'},'Email for booking notifications'),
+        h('input',{class:'field',id:'nemail',type:'email',maxlength:'120',placeholder:'you@example.com',value:D.notifyEmail||'',oninput:function(e){D.notifyEmail=e.target.value;mark();}}),
+        h('span',{class:'sub'},'Private. Only used to email you when someone books or cancels.')),
+      h('div',{},h('div',{class:'lbl',style:'margin-bottom:4px'},'Weekly hours'),h('div',{},rows))),
+    h('div',{class:'row'},
+      h('button',{class:'btn primary',type:'button',onclick:saveHours},S.hosts[S.uid]?'Publish changes':'Publish my hours'),
+      h('span',{class:'sub',id:'saveMsg'},S.saveMsg||(S.dirty?'Unpublished changes':''))));
+}
+async function saveName(val){
+  val=(val||'').trim();if(!val)return toast('Enter a name.');
+  var res=await sb.from('profiles').upsert({id:S.uid,name:val});
+  if(res.error)return toast(res.error.message);
+  toast('Name saved.');lastPeopleSig='';lastDetailSig='';await refreshData();
+}
+async function saveHours(){
+  var D=S.draft,avail={},bad=false;
+  ORDER.forEach(function(d){
+    var ws=(D.avail[d]||[]).filter(function(w){return w.s&&w.e});
+    ws.forEach(function(w){if(w.e<=w.s)bad=true});
+    ws.sort(function(a,b){return a.s<b.s?-1:1});
+    if(ws.length)avail[d]=ws.map(function(w){return{s:w.s,e:w.e}});
+  });
+  if(bad)return toast('Each window needs an end time after its start time.');
+  if(!Object.keys(avail).length&&D.active!==false)return toast('Add at least one window, or turn off Accepting bookings.');
+  var em=(D.notifyEmail||'').trim();
+  if(em&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em))return toast('That notification email does not look right.');
+  var r1=await sb.from('hosts').upsert({user_id:S.uid,active:D.active!==false,tz:D.tz||MYTZ,duration_min:D.durationMin||60,max_per_week:D.maxPerWeek||1,
+    max_hours_per_week:D.maxHoursPerWeek||1,link:(D.link||'').trim(),avail:avail,updated_at:new Date().toISOString()});
+  if(r1.error)return toast(r1.error.message);
+  var r2=await sb.from('host_private').upsert({user_id:S.uid,notify_email:em});
+  if(r2.error)return toast(r2.error.message);
+  S.notifyEmail=em;S.dirty=false;S.starter=false;S.saveMsg='Published. People can book these times now.';toast('Your hours are published.');
+  lastPeopleSig='';lastDetailSig='';await refreshData();
+}
+
+/* ---------- plumbing ---------- */
+function setView(v){
+  S.view=v;
+  ['book','mine','hours'].forEach(function(k){$('#view-'+k).hidden=k!==v});
+  document.querySelectorAll('.tab').forEach(function(t){if(t.dataset.view===v)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current');});
+  renderAll();
+}
+function renderAll(){
+  renderPeople();renderDetail();renderSchedule();
+  if(S.view==='hours'&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#view-hours')))renderHours();
+}
+async function startApp(){
+  S.started=true;showScreen('app');
+  $('#who').textContent=nm(S.uid)+' · times shown in '+MYTZ;
+  document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){setView(t.dataset.view)})});
+  $('#q').addEventListener('input',function(e){S.q=e.target.value;renderPeople();});
+  $('#signOut').addEventListener('click',async function(){await sb.auth.signOut();location.reload();});
+  loadDraft();
+  S.seenIds=unseenForHost().map(function(b){return b.id});
+  setView('book');
+  sb.channel('open-hours').on('postgres_changes',{event:'*',schema:'public',table:'bookings'},function(){refreshData()})
+    .on('postgres_changes',{event:'*',schema:'public',table:'hosts'},function(){refreshData()}).subscribe();
+  setInterval(function(){if(!document.hidden)refreshData();},20000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)refreshData();});
+}
+async function boot(user){
+  if(S.booted)return;S.booted=true;S.uid=user.id;S.email=user.email||'';
+  var ok=await loadAll();
+  if(!ok){S.booted=false;showScreen('auth');return;}
+  if(!S.profiles[S.uid]){
+    showScreen('nameScreen');
+    $('#nameForm').addEventListener('submit',async function(e){
+      e.preventDefault();var v=$('#firstName').value.trim();if(!v)return;
+      var res=await sb.from('profiles').upsert({id:S.uid,name:v});
+      if(res.error){var er=$('#nameErr');er.textContent=res.error.message;er.hidden=false;return;}
+      await loadAll();startApp();
+    });
+    return;
+  }
+  startApp();
+}
+async function start(){
+  var cfg=window.OPEN_HOURS_CONFIG||{};
+  if(!cfg.supabaseUrl||!cfg.supabaseAnonKey||!window.supabase)return showScreen('setup');
+  sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
+  $('#loginForm').addEventListener('submit',async function(e){
+    e.preventDefault();var em=$('#email').value.trim(),btn=$('#loginBtn'),msg=$('#loginMsg');
+    btn.disabled=true;msg.textContent='Sending…';
+    var res=await sb.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.origin+location.pathname}});
+    btn.disabled=false;
+    msg.textContent=res.error?res.error.message:'Check your email for the sign-in link, then come back to this tab or open the link on this device.';
+  });
+  sb.auth.onAuthStateChange(function(ev,sess){
+    if(ev==='SIGNED_IN'&&sess&&!S.booted)boot(sess.user);
+    if(ev==='SIGNED_OUT'&&S.booted)location.reload();
+  });
+  var cur=await sb.auth.getSession();
+  if(cur.data&&cur.data.session)boot(cur.data.session.user);else showScreen('auth');
+}
+start().catch(function(){showScreen('auth');toast('Something went wrong loading the site. Reload the page to try again.');});
+})();
+</script>
+</body>
+</html>
